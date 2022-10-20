@@ -7,9 +7,11 @@ use serde::de::{Error, Visitor};
 
 use serde::{Deserialize, Deserializer, Serialize};
 
-pub trait NamespacedKey: Display + Hash {
+pub trait NamespacedKey: Display + Hash + Into<(String, String)> {
     fn get_key(&self) -> &str;
     fn get_namespace(&self) -> &str;
+
+    fn as_tuple(&self) -> (&str, &str);
 }
 
 #[derive(Debug)]
@@ -26,12 +28,29 @@ pub struct OwnedNameSpaceKey {
     namespace: String,
     key: String,
 }
+
+impl Into<(String, String)> for OwnedNameSpaceKey {
+    fn into(self) -> (String, String) {
+        (self.namespace, self.key)
+    }
+}
+
+impl Into<(String, String)> for &'_ OwnedNameSpaceKey {
+    fn into(self) -> (String, String) {
+        (self.namespace.clone(), self.key.clone())
+    }
+}
+
 impl NamespacedKey for &'_ OwnedNameSpaceKey {
     fn get_key(&self) -> &str {
         &self.key
     }
     fn get_namespace(&self) -> &str {
         &self.namespace
+    }
+
+    fn as_tuple(&self) -> (&str, &str) {
+        (&self.namespace, &self.key)
     }
 }
 
@@ -59,8 +78,8 @@ impl TryFrom<String> for OwnedNameSpaceKey {
 
 impl Serialize for OwnedNameSpaceKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
+        where
+            S: serde::Serializer,
     {
         serializer.serialize_str(&self.to_string())
     }
@@ -75,14 +94,14 @@ impl<'de> Visitor<'de> for NameSpaceKeyVisitor {
         formatter.write_str("a string")
     }
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: Error,
+        where
+            E: Error,
     {
         OwnedNameSpaceKey::from_str(v).map_err(Error::custom)
     }
     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-    where
-        E: Error,
+        where
+            E: Error,
     {
         OwnedNameSpaceKey::from_str(&v).map_err(Error::custom)
     }
@@ -90,8 +109,8 @@ impl<'de> Visitor<'de> for NameSpaceKeyVisitor {
 
 impl<'de> Deserialize<'de> for OwnedNameSpaceKey {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
+        where
+            D: Deserializer<'de>,
     {
         deserializer.deserialize_str(NameSpaceKeyVisitor)
     }
@@ -116,6 +135,10 @@ impl NamespacedKey for OwnedNameSpaceKey {
     fn get_namespace(&self) -> &str {
         &self.namespace
     }
+
+    fn as_tuple(&self) -> (&str, &str) {
+        (&self.namespace, &self.key)
+    }
 }
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -136,11 +159,21 @@ impl<'a> Display for NameSpaceRef<'a> {
     }
 }
 
+impl Into<(String, String)> for NameSpaceRef<'_> {
+    fn into(self) -> (String, String) {
+        (self.namespace.to_string(), self.key.to_string())
+    }
+}
+
 impl<'a> NamespacedKey for NameSpaceRef<'a> {
     fn get_key(&self) -> &str {
         self.key
     }
     fn get_namespace(&self) -> &str {
         self.namespace
+    }
+
+    fn as_tuple(&self) -> (&str, &str) {
+        (self.namespace, self.key)
     }
 }
