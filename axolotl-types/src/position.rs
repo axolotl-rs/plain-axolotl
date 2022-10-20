@@ -1,5 +1,5 @@
-use std::fmt::Formatter;
 use axolotl_nbt_macros::ListSerialize;
+use std::fmt::Formatter;
 
 use serde::de::{Error, SeqAccess, Visitor};
 use serde::ser::SerializeSeq;

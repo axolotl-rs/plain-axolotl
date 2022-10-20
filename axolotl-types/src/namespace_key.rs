@@ -26,6 +26,14 @@ pub struct OwnedNameSpaceKey {
     namespace: String,
     key: String,
 }
+impl NamespacedKey for &'_ OwnedNameSpaceKey {
+    fn get_key(&self) -> &str {
+        &self.key
+    }
+    fn get_namespace(&self) -> &str {
+        &self.namespace
+    }
+}
 
 impl FromStr for OwnedNameSpaceKey {
     type Err = BadNamespacedKeyError;
