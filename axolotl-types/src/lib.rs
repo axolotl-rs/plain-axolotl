@@ -3,6 +3,6 @@
 mod namespace_key;
 mod position;
 
-pub use namespace_key::{BadNamespacedKeyError, NameSpaceRef, NamespacedKey, OwnedNameSpaceKey};
+pub use namespace_key::{BadNamespacedKeyError, NameSpaceRef, NamespacedKey, OwnedNameSpaceKey, NameSpaceKey};
 
 pub use position::{RawPosition, RawRotation};
