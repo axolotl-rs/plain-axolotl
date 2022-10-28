@@ -5,7 +5,7 @@ use std::str::FromStr;
 
 use serde::de::{Error, Visitor};
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub trait NamespacedKey: Display + Hash + Into<(String, String)> {
     fn get_key(&self) -> &str;
@@ -147,6 +147,15 @@ pub struct NameSpaceRef<'a> {
     key: &'a str,
 }
 
+impl Serialize for NameSpaceRef<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: serde::Serializer,
+    {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
 impl<'a> NameSpaceRef<'a> {
     pub fn new(namespace: &'a str, key: &'a str) -> Self {
         Self { namespace, key }
@@ -175,5 +184,74 @@ impl<'a> NamespacedKey for NameSpaceRef<'a> {
 
     fn as_tuple(&self) -> (&str, &str) {
         (self.namespace, self.key)
+    }
+}
+
+#[derive(Debug, Clone, Hash, Eq, PartialEq)]
+pub enum NameSpaceKey<'key> {
+    Owned(OwnedNameSpaceKey),
+    RefOwned(&'key OwnedNameSpaceKey),
+    Ref(NameSpaceRef<'key>),
+}
+
+
+impl Display for NameSpaceKey<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            NameSpaceKey::Owned(key) => write!(f, "{}", key),
+            NameSpaceKey::RefOwned(key) => write!(f, "{}", key),
+            NameSpaceKey::Ref(key) => write!(f, "{}", key),
+        }
+    }
+}
+
+impl Into<(String, String)> for NameSpaceKey<'_> {
+    fn into(self) -> (String, String) {
+        match self {
+            NameSpaceKey::Owned(owned) => owned.into(),
+            NameSpaceKey::RefOwned(owned) => owned.into(),
+            NameSpaceKey::Ref(r) => r.into(),
+        }
+    }
+}
+
+impl NamespacedKey for NameSpaceKey<'_> {
+    fn get_key(&self) -> &str {
+        match self {
+            NameSpaceKey::Owned(owned) => owned.get_key(),
+            NameSpaceKey::RefOwned(owned) => owned.get_key(),
+            NameSpaceKey::Ref(r) => r.get_key(),
+        }
+    }
+    fn get_namespace(&self) -> &str {
+        match self {
+            NameSpaceKey::Owned(owned) => owned.get_namespace(),
+            NameSpaceKey::RefOwned(owned) => owned.get_namespace(),
+            NameSpaceKey::Ref(r) => r.get_namespace(),
+        }
+    }
+
+    fn as_tuple(&self) -> (&str, &str) {
+        match self {
+            NameSpaceKey::Owned(owned) => owned.as_tuple(),
+            NameSpaceKey::RefOwned(owned) => owned.as_tuple(),
+            NameSpaceKey::Ref(r) => r.as_tuple(),
+        }
+    }
+}
+
+impl Serialize for NameSpaceKey<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        match self {
+            NameSpaceKey::Owned(owned) => owned.serialize(serializer),
+            NameSpaceKey::RefOwned(owned) => owned.serialize(serializer),
+            NameSpaceKey::Ref(name_space_ref) => name_space_ref.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for NameSpaceKey<'_> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error> where D: Deserializer<'de> {
+        OwnedNameSpaceKey::deserialize(deserializer).map(NameSpaceKey::Owned)
     }
 }
